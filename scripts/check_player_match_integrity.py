@@ -16,19 +16,25 @@ matches = pd.read_parquet(P_MATCH)
 sp = pd.read_parquet(P_SP)
 
 print('players_train rows:', len(players))
-# fifa_id nulls
-null_fifa = players['fifa_id'].isna().sum()
-print('players with null fifa_id:', null_fifa, f'({null_fifa/len(players):.2%})')
-# players with null fifa_id but with at least one attribute present
+# player_id presence (we now use index-based player_id in processed tables)
+if 'player_id' not in players.columns:
+    print('WARNING: `player_id` column not present in players table')
+else:
+    null_ids = players['player_id'].isna().sum()
+    print('players with null player_id:', null_ids, f'({null_ids/len(players):.2%})')
+# players with null player_id but with at least one attribute present
 attrs = ['pace','shooting','passing','dribbling','defending','physic']
-has_attr_but_no_id = players[players['fifa_id'].isna() & players[attrs].notna().any(axis=1)]
-print('players with NULL fifa_id but at least one attribute present:', len(has_attr_but_no_id))
-print('\nSample rows (NULL fifa_id but attributes present):')
+has_attr_but_no_id = players[players['player_id'].isna() & players[attrs].notna().any(axis=1)]
+print('players with NULL player_id but at least one attribute present:', len(has_attr_but_no_id))
+print('\nSample rows (NULL player_id but attributes present):')
 print(has_attr_but_no_id.head(10).to_string(index=False))
 
-# check for fifa_id == 0 or '0'
-zero_ids = players['fifa_id'].apply(lambda x: str(x).strip()=='0').sum()
-print('\nplayers with fifa_id == 0:', zero_ids)
+# check for player_id == 0 or '0'
+if 'player_id' in players.columns:
+    zero_ids = players['player_id'].apply(lambda x: str(x).strip()=='0').sum()
+else:
+    zero_ids = 0
+print('\nplayers with player_id == 0:', zero_ids)
 
 # matches: inspect starting xi lists for 0 or missing entries
 def _as_list_like(x):

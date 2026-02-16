@@ -143,10 +143,19 @@ def main():
         out.update(attr_vals)
         rows.append(out)
 
-    players_df = pd.DataFrame(rows)
+    players_df = pd.DataFrame(rows).reset_index(drop=True)
+    # assign stable index-based player id and keep only the requested columns for training
+    players_df['player_id'] = (players_df.index + 1).astype(int)
+    # keep player_name_sb + player_id + attributes
+    keep_cols = ['player_id','player_name_sb'] + ATTRS + ['fifa_short_name']
+    # ensure columns exist
+    keep_cols = [c for c in keep_cols if c in players_df.columns]
+    # build a temporary mapping from SB id -> player_id for matches assembly
+    pid_map = dict(zip(players_df['player_id_sb'].astype(int), players_df['player_id'].astype(int)))
     players_out = OUT / 'players_train_1000.parquet'
-    players_df.to_parquet(players_out, index=False)
+    players_df[keep_cols].to_parquet(players_out, index=False)
     print('Wrote player table:', players_out, 'rows=', len(players_df))
+
 
     # Build match table: aggregate starting XI into lists of fifa_id (or NaN if not found)
     # need match-level info (scores, home/away team ids)
@@ -164,8 +173,8 @@ def main():
     if home_score_col is None or away_score_col is None:
         print('Warning: could not find home/away score columns; match labels will be empty')
 
-    # build mapping player_id_sb -> fifa_id using players_df
-    pid_to_fifa = dict(zip(players_df['player_id_sb'], players_df['fifa_id']))
+    # build mapping player_id_sb -> player_id using players_df (pid_map was created earlier)
+    pid_to_player = pid_map
 
     match_rows = []
     for mid, grp in sp_n.groupby('match_id'):
@@ -190,17 +199,17 @@ def main():
         for tid, players in teams.items():
             # sort by jersey
             players_sorted = sorted(players, key=lambda x: (pd.isnull(x.get('jersey')), x.get('jersey')))
-            fifa_ids = [pid_to_fifa.get(int(p['player_id_sb']), pd.NA) for p in players_sorted]
+            player_ids = [pid_to_player.get(int(p['player_id_sb']), pd.NA) for p in players_sorted]
             if not pd.isna(home_team) and tid == home_team:
-                home_players = fifa_ids
+                home_players = player_ids
             elif not pd.isna(away_team) and tid == away_team:
-                away_players = fifa_ids
+                away_players = player_ids
             else:
                 # if home/away not available, assign first team to home if empty
                 if not home_players:
-                    home_players = fifa_ids
+                    home_players = player_ids
                 else:
-                    away_players = fifa_ids
+                    away_players = player_ids
         # ensure lists length <=11
         home_players = home_players[:11]
         away_players = away_players[:11]
