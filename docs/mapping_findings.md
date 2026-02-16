@@ -1,31 +1,41 @@
 # Mapping Findings & Actions ✅
 
-**TL;DR:** We implemented a multi-pass mapping pipeline (exact normalize → quick fuzzy → full fuzzy → position-aware pass) and increased player-coverage substantially. Current state: **3,459 accepted mappings**, **4,474 review rows**, **47,873 / 53,761 player appearances mapped (89.0%)**, and **467 matches fully mapped (19.1%)**. The 80% match-level target requires an additional country/context-aware pass or a small classifier.
+**TL;DR:** Multi-pass mapping + classifier and targeted heuristics substantially improved coverage and safety. Current workspace state: **3,661 accepted mappings**, `player_map_review.csv` (1k subset) **1,942 review rows**, **50,114 / 53,761 player appearances mapped (93.2%)**, and **1,066 matches fully mapped (43.6%)**. We also produced a 1,000-match processed training slice and assigned stable index-based `fifa_id` values so every player has an ID for inference.
 
 ---
 
-## What I implemented (scripts) 🔧
+## What I implemented (scripts & passes) 🔧
 - `scripts/match_players.py` — starting-XI extraction, normalization, initial exact + quick-fuzzy pass
 - `scripts/match_players_fullfuzzy.py` — exhaustive fuzzy pass (token blocking, multi-scorer)
-- `scripts/match_players_position_pass.py` — position-aware promotion pass (accept if SB position group matches FIFA player group)
-- `scripts/simulate_threshold_coverage.py` — simulate match-level coverage under different score thresholds
-- `scripts/check_matches_full_match.py` — compute matches where both teams are fully mapped
-- `scripts/check_mapping_stats.py` — quick stats printing helper
+- `scripts/match_players_position_pass.py` — position-aware promotion pass
+- `scripts/match_players_bigrams_fuzzy.py` — bigram token intersection pass (targeted)
+- `scripts/match_players_surname_fuzzy.py` / `scripts/match_players_initial_surname.py` — surname / initial+surname passes
+- `scripts/match_players_permissive_fuzzy.py` — permissive/fallback fuzzy attempts
+- `scripts/train_mapping_classifier.py` + `scripts/match_players_classifier_pass.py` — small classifier to safely promote review candidates
+- `scripts/review_mapping_cli.py` — interactive reviewer for manual validation
+- `scripts/restrict_to_first_n_matches.py` — create a 1k-match subset (mapping + FIFA subset)
+- `scripts/build_training_tables.py` — build `players_train_1000.parquet` / `matches_train_1000.parquet`
+- `scripts/assign_sofifa_index_ids.py` / `scripts/force_index_ids.py` — assign stable index-based IDs and reconcile processed tables
+- Diagnostics & helpers: `scripts/check_mapping_stats.py`, `scripts/check_matches_full_match.py`, `scripts/check_player_match_integrity.py`, `scripts/analyze_unmatched.py`, `scripts/inspect_fifa_1000.py`
 
 All scripts are runnable via `uv run scripts/<script>.py` (they include inline dependency metadata).
 
 ---
 
-## Key metrics (latest run) 📊
-- Unique StatsBomb players: **4,472**
-- Accepted mappings: **3,459** (`data/mappings/player_map.csv`)
-- Review / ambiguous rows: **4,474** (`data/mappings/player_map_review.csv`)
-- Player appearances mapped: **47,873 / 53,761 (89.0%)**
-- Matches where BOTH teams are fully matched: **467 / 2,445 (19.1%)**
+## Key metrics (current) 📊
+- Unique StatsBomb players (global): **4,472**
+- Auto-accepted mappings (global): **3,661** (`data/mappings/player_map.csv`)
+- Review / ambiguous rows (current review file = 1k subset): **1,942** (`data/mappings/player_map_review.csv`)
+- Player appearances matched (using accepted map): **50,114 / 53,761 (93.2%)**
+- Matches where BOTH teams are fully matched: **1,066 / 2,445 (43.6%)**
+
+Processed training slice (first 1,000 matches):
+- `data/processed/players_train_1000.parquet` — **1,942** players
+- `data/processed/matches_train_1000.parquet` — **1,000** matches
 
 Simulation notes:
-- Promoting review candidates at score ≥75 would increase fully-matched matches to **1,215 (49.7%)**; however that is riskier.
-- Position-aware promotions increased fully-matched matches from ~0.37% → 19.1% (big win).
+- Classifier + position-aware promotions produced the largest safe gains; targeted surname/bigrams passes recovered additional edge cases.
+- Lowering thresholds (e.g., auto-accept ≥75) yields much higher match-level coverage but increases risk and manual review burden.
 
 ---
 
@@ -60,12 +70,11 @@ Optional: If you want immediate >80% match-level coverage, use fallback fills pe
 
 ---
 
-## Files added by this work
-- `scripts/match_players_fullfuzzy.py`
-- `scripts/match_players_position_pass.py`
-- `scripts/simulate_threshold_coverage.py`
-- `scripts/check_matches_full_match.py`
-- `scripts/check_mapping_stats.py`
+## Files added / updated by recent work
+- Mapping passes: `match_players_fullfuzzy.py`, `match_players_bigrams_fuzzy.py`, `match_players_surname_fuzzy.py`, `match_players_initial_surname.py`, `match_players_permissive_fuzzy.py`
+- Classifier & ML: `train_mapping_classifier.py`, `match_players_classifier_pass.py`
+- Review & tooling: `review_mapping_cli.py`, `restrict_to_first_n_matches.py`, `build_training_tables.py`, `assign_sofifa_index_ids.py`, `force_index_ids.py`, `inspect_fifa_1000.py`
+- Diagnostics: `check_mapping_stats.py`, `check_matches_full_match.py`, `check_player_match_integrity.py`, `analyze_unmatched.py`
 
 ---
 
@@ -84,4 +93,4 @@ If you'd like, I can:
 
 ---
 
-Last updated: 2026-02-01
+Last updated: 2026-02-16
