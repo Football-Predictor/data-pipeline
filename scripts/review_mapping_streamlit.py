@@ -195,8 +195,22 @@ if candidates_df.empty:
     st.info('No rows matching filter')
     st.stop()
 
-row_index = st.sidebar.number_input('Row index (in filtered set)', min_value=0, max_value=len(candidates_df)-1, value=0, step=1)
-row = candidates_df.iloc[int(row_index)]
+# session-backed row index so reviewer can auto-advance after actions
+if 'row_index' not in st.session_state:
+    st.session_state['row_index'] = 0
+# reset row index when the filter changes
+if st.session_state.get('last_filter_status') != filter_status:
+    st.session_state['row_index'] = 0
+    st.session_state['last_filter_status'] = filter_status
+# clamp to valid range
+st.session_state['row_index'] = min(st.session_state['row_index'], max(0, len(candidates_df) - 1))
+
+row_index = st.sidebar.number_input('Row index (in filtered set)', min_value=0, max_value=len(candidates_df)-1, value=st.session_state['row_index'], step=1, key='row_index_input')
+# keep session state in sync when user edits the widget
+if int(row_index) != st.session_state['row_index']:
+    st.session_state['row_index'] = int(row_index)
+
+row = candidates_df.iloc[int(st.session_state['row_index'])]
 
 st.subheader('StatsBomb player')
 st.write('player_id_sb:', row.get('player_id_sb'))
@@ -225,6 +239,9 @@ with col1:
             update_review_status(int(row.name), 'accepted_manual', candidate_fifa_id=sofifa, candidate_name=chosen['short_name'], score=chosen['score'])
             copy_fifa_attrs_into_players(row.get('player_name_sb'), sofifa)
             st.success('Accepted mapping and copied attributes (if any).')
+            # auto-advance to next row in the filtered set
+            st.session_state['row_index'] = min(st.session_state.get('row_index', 0) + 1, len(candidates_df) - 1)
+            st.experimental_rerun()
 
 with col2:
     st.markdown('### Manual mapping / Add FIFA row')
@@ -246,14 +263,18 @@ with col2:
                 append_accept_mapping(row.get('player_id_sb'), row.get('player_name_sb'), new_id, 100.0, method='streamlit_manual_added')
                 update_review_status(int(row.name), 'accepted_manual', candidate_fifa_id=new_id, candidate_name=manual_short, score=100.0)
                 copy_fifa_attrs_into_players(row.get('player_name_sb'), new_id)
-                st.success(f'Added new FIFA row (sofifa_id={new_id}) and accepted mapping.')
-            else:
+                st.success(f'Added new FIFA row (sofifa_id={new_id}) and accepted mapping.')                # auto-advance
+                st.session_state['row_index'] = min(st.session_state.get('row_index', 0) + 1, len(candidates_df) - 1)
+                st.experimental_rerun()            else:
                 try:
                     fid_int = int(manual_fifa_id)
                     append_accept_mapping(row.get('player_id_sb'), row.get('player_name_sb'), fid_int, 100.0, method='streamlit_manual')
                     update_review_status(int(row.name), 'accepted_manual', candidate_fifa_id=fid_int, candidate_name=manual_short or row.get('player_name_sb'), score=100.0)
                     copy_fifa_attrs_into_players(row.get('player_name_sb'), fid_int)
                     st.success(f'Accepted manual mapping to fifa_id={fid_int}.')
+                    # auto-advance
+                    st.session_state['row_index'] = min(st.session_state.get('row_index', 0) + 1, len(candidates_df) - 1)
+                    st.experimental_rerun()
                 except Exception as e:
                     st.error('Invalid FIFA id')
 
@@ -262,6 +283,9 @@ st.markdown('---')
 if st.button('Mark as unmatched'):
     update_review_status(int(row.name), 'unmatched')
     st.success('Marked as unmatched')
+    # auto-advance
+    st.session_state['row_index'] = min(st.session_state.get('row_index', 0) + 1, len(candidates_df) - 1)
+    st.experimental_rerun()
 
 st.markdown('### Quick search across FIFA (name)')
 q = st.text_input('Search FIFA names (substring)')
