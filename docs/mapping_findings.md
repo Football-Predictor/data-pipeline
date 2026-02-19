@@ -87,10 +87,15 @@ Optional: If you want immediate >80% match-level coverage, use fallback fills pe
 
 ---
 
+## Changelog (short)
+- **2026-02-19** — Converted processed tables to a single index-based `player_id`; updated `matches_train_1000.parquet` to reference `player_id`; added `convert_processed_to_index_only.py`; verified integrity. ✅
+- **2026-02-16** — Added classifier promotion pass, bigram/surname/initial passes, review CLI; created 1k-match processed slice and assigned stable index-based IDs to make the dataset inference-ready. Coverage: **93.2%** appearance, **43.6%** fully-mapped matches.
+- **2026-02-01** — Implemented multi-pass mapping pipeline (exact → quick-fuzzy → full-fuzzy → position-aware); ran exhaustive fuzzy and position promotions; added simulation tooling and diagnostics.
+
 If you'd like, I can:
-- Add a `CHANGELOG.md` summarizing these steps and commit history, or
+- Add a `CHANGELOG.md` file with these entries and commit history, or
 - Open a pull request with these docs + scripts changes and a short summary for reviewers.
 
 ---
 
-Last updated: 2026-02-16
+Last updated: 2026-02-19
