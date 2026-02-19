@@ -70,11 +70,15 @@ Optional: If you want immediate >80% match-level coverage, use fallback fills pe
 
 ---
 
-## Files added / updated by recent work
-- Mapping passes: `match_players_fullfuzzy.py`, `match_players_bigrams_fuzzy.py`, `match_players_surname_fuzzy.py`, `match_players_initial_surname.py`, `match_players_permissive_fuzzy.py`
-- Classifier & ML: `train_mapping_classifier.py`, `match_players_classifier_pass.py`
-- Review & tooling: `review_mapping_cli.py`, `restrict_to_first_n_matches.py`, `build_training_tables.py`, `assign_sofifa_index_ids.py`, `force_index_ids.py`, `inspect_fifa_1000.py`
-- Diagnostics: `check_mapping_stats.py`, `check_matches_full_match.py`, `check_player_match_integrity.py`, `analyze_unmatched.py`
+## Label sources & label‑noise risk 🏷️
+- Labels (match outcomes, goals) are taken from StatsBomb `matches.parquet` and are considered authoritative for final scores; however **label noise can be introduced by mapping errors** (incorrect player→FIFA matches) and by timing mismatches where FIFA attribute snapshots do not align with the match date (temporal drift). Substitutions, lineup errors, or missing starting XI rows in StatsBomb can also create noisy inputs that look like label noise at model training time.
+- Mitigations we use: keep mapping status (`accepted` / `review` / `unmatched`) and only promote high‑confidence matches (fuzzy+position checks, classifier thresholds); flag and hold `review` rows for manual inspection via `review_mapping_cli.py`; run sensitivity analyses to measure model robustness to mapping errors before production deployment.
+
+## Key data assumptions 🔎
+- FIFA attributes (pace, shooting, passing, dribbling, defending, physic) are treated as proxies for a player’s ability at or near the match date — we assume temporal drift is small within our chosen training window or is handled via season cutoff.
+- Starting XI sufficiently represents team starting strength for match‑level prediction (we assume missing/unmapped players are rare or handled by documented fallbacks). 
+- Mapping corrections (classifier promotions, position checks, manual review) keep mapping error rates low enough that label noise remains manageable (current processed slice: ~93.2% appearance coverage).
+- Where canonical `sofifa_id` is absent we use a stable index‑based `player_id` for reproducible joins; canonical IDs should replace these when available.
 
 ---
 
