@@ -20,7 +20,13 @@ import streamlit as st
 from pathlib import Path
 import pandas as pd
 import unicodedata
-from rapidfuzz import process, fuzz
+try:
+    from rapidfuzz import process, fuzz
+    _HAS_RAPIDFUZZ = True
+except Exception:
+    process = None
+    fuzz = None
+    _HAS_RAPIDFUZZ = False
 
 # resolve project root relative to this script so Streamlit can be launched from any cwd
 ROOT = Path(__file__).resolve().parents[1] / ''
@@ -34,6 +40,11 @@ PLAYERS_P = ROOT / 'processed' / 'players_train_1000.parquet'
 ATTRS = ['pace','shooting','passing','dribbling','defending','physic']
 
 st.set_page_config(page_title='Player mapping reviewer', layout='wide')
+
+if not _HAS_RAPIDFUZZ:
+    st.warning("`rapidfuzz` is not installed in this runtime — fuzzy candidate lookup is disabled. "
+               "Install it with `uv add rapidfuzz` or launch Streamlit from the project venv:\n"
+               "& \".venv\\Scripts\\python.exe\" -m streamlit run scripts/review_mapping_streamlit.py")
 
 @st.cache_data
 def load_review():
@@ -84,6 +95,10 @@ def token_block_candidates(sb_name, fifa_df, max_candidates=5000):
 
 
 def get_top_candidates(sb_name, fifa_df, top_n=10):
+    # If rapidfuzz is missing in this runtime (for example when using `uv tool run`),
+    # return an empty candidate set and rely on the UI warning shown at startup.
+    if not _HAS_RAPIDFUZZ:
+        return []
     cand_df = token_block_candidates(sb_name, fifa_df, max_candidates=5000)
     if cand_df.empty:
         return []

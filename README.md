@@ -32,3 +32,37 @@ If you prefer not to use `uv`, install dependencies manually and run the Python 
 python -m pip install kaggle python-dotenv
 python scripts/download_fifa23.py
 ```
+
+---
+
+## Review mapping (Streamlit reviewer) 🔍
+
+The interactive reviewer is `scripts/review_mapping_streamlit.py`. Use the Streamlit **CLI** (not `uv run <script>`) so session state and the full Streamlit runtime work correctly.
+
+Quick steps (uv workflow):
+
+1. Ensure runtime deps are present in the project:
+
+```powershell
+uv add streamlit pandas rapidfuzz
+```
+
+2. Recommended — run Streamlit with the project venv (ensures imports like `rapidfuzz` are available):
+
+```powershell
+& ".venv\Scripts\python.exe" -m streamlit run scripts/review_mapping_streamlit.py --server.headless true
+```
+
+3. Alternative (uses uv's tool runner):
+
+```powershell
+uv tool run streamlit run scripts/review_mapping_streamlit.py --server.headless true
+```
+
+Notes & troubleshooting:
+- If you see "missing ScriptRunContext" or "Session state does not function...", stop and re-run via the Streamlit CLI (example above). ⚠️
+- If the app errors with `ModuleNotFoundError`, install the missing package with `uv add <package>` and re-run.
+- The reviewer will print a Local URL (e.g. `http://localhost:8501`); open that in your browser to interact with mappings.
+
+---
+
