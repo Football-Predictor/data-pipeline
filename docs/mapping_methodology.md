@@ -7,6 +7,31 @@ Purpose
 Summary (one line)
 - We use a layered, auditable pipeline that combines deterministic rules, token‑blocking, staged fuzzy matching, contextual validation (position checks), a small classifier, and human review to produce safe, reproducible player→FIFA mappings and training tables.
 
+## Process diagram
+```mermaid
+flowchart TD
+  A[StatsBomb player name] --> B[Normalize\n(lowercase, NFKD, strip punctuation)]
+  B --> C{Exact normalized\nmatch?}
+  C -- yes --> D[Accept mapping \n(write to player_map.csv)]
+  C -- no --> E[Token‑blocking\n(build candidate set)]
+  E --> F[Quick fuzzy\n(cheap filters)]
+  F -- high --> G{Position check\n(GK / DEF / MID / FWD)}
+  G -- pass --> D
+  G -- fail --> H[Flag for review]
+  F -- low --> I[Full fuzzy\n(token_sort/token_set)]
+  I -- high --> J[Classifier (p ≥ th)]
+  J -- yes --> D
+  J -- no --> K[Targeted passes\n(bigrams / surname / initials)]
+  K -- high --> D
+  K -- low --> H
+  H --> L[Human review CLI]\nL --> M[Manual accept / reject]
+  D --> N[Audit log: method, score, timestamp]
+  N --> O[Assign/ensure stable player_id (index+1 if missing)]
+  O --> P[Build processed training tables\n(players_train / matches_train)]
+  H --> Q[Mark as review/unmatched]
+  P --> R[Model training / inference]
+```
+
 1) Inputs & outputs
 - Inputs:
   - StatsBomb starting‑XI (matches_starting_players.parquet)
