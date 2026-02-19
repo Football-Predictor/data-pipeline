@@ -22,7 +22,10 @@ import pandas as pd
 import unicodedata
 from rapidfuzz import process, fuzz
 
-ROOT = Path('data')
+# resolve project root relative to this script so Streamlit can be launched from any cwd
+ROOT = Path(__file__).resolve().parents[1] / ''
+ROOT = ROOT.parent if ROOT.name == 'scripts' else Path(__file__).resolve().parents[1]
+ROOT = ROOT / 'data'
 REVIEW_P = ROOT / 'mappings' / 'player_map_review.csv'
 ACCEPT_P = ROOT / 'mappings' / 'player_map.csv'
 FIFA_P = ROOT / 'cache' / 'fifa_players_1000.parquet'
@@ -34,6 +37,10 @@ st.set_page_config(page_title='Player mapping reviewer', layout='wide')
 
 @st.cache_data
 def load_review():
+    # be tolerant if the review CSV is missing (create empty frame with expected cols)
+    if not REVIEW_P.exists():
+        cols = ['player_id_sb','player_name_sb','candidate_fifa_id','candidate_name','score','status','method']
+        return pd.DataFrame(columns=cols)
     return pd.read_csv(REVIEW_P, dtype={'player_id_sb': object})
 
 @st.cache_data
