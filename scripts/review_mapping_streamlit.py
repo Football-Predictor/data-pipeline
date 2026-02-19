@@ -263,9 +263,11 @@ with col2:
                 append_accept_mapping(row.get('player_id_sb'), row.get('player_name_sb'), new_id, 100.0, method='streamlit_manual_added')
                 update_review_status(int(row.name), 'accepted_manual', candidate_fifa_id=new_id, candidate_name=manual_short, score=100.0)
                 copy_fifa_attrs_into_players(row.get('player_name_sb'), new_id)
-                st.success(f'Added new FIFA row (sofifa_id={new_id}) and accepted mapping.')                # auto-advance
+                st.success(f'Added new FIFA row (sofifa_id={new_id}) and accepted mapping.')
+                # auto-advance
                 st.session_state['row_index'] = min(st.session_state.get('row_index', 0) + 1, len(candidates_df) - 1)
-                st.experimental_rerun()            else:
+                st.experimental_rerun()
+            else:
                 try:
                     fid_int = int(manual_fifa_id)
                     append_accept_mapping(row.get('player_id_sb'), row.get('player_name_sb'), fid_int, 100.0, method='streamlit_manual')
