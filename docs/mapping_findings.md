@@ -92,6 +92,7 @@ Optional: If you want immediate >80% match-level coverage, use fallback fills pe
 ---
 
 ## Changelog (short)
+- **2026-03-11** — Added `scripts/auto_scrape_unmatched.py`:auto‑lookup of unmatched rows using offline fuzzy sample + optional web scraping; results now land in review and carry fuzzy scores. Added rollback, debug and inspection utilities. Coverage metrics updated below. 💾
 - **2026-02-19** — Converted processed tables to a single index-based `player_id`; updated `matches_train_1000.parquet` to reference `player_id`; added `convert_processed_to_index_only.py`; verified integrity. ✅
 - **2026-02-16** — Added classifier promotion pass, bigram/surname/initial passes, review CLI; created 1k-match processed slice and assigned stable index-based IDs to make the dataset inference-ready. Coverage: **93.2%** appearance, **43.6%** fully-mapped matches.
 - **2026-02-01** — Implemented multi-pass mapping pipeline (exact → quick-fuzzy → full-fuzzy → position-aware); ran exhaustive fuzzy and position promotions; added simulation tooling and diagnostics.
@@ -102,4 +103,13 @@ If you'd like, I can:
 
 ---
 
-Last updated: 2026-02-19
+**Metric snapshot (current after latest `compute_metrics` run)**
+- Review file rows remaining: **913** in `review`, **3** still `unmatched`.
+- Map file row count: **2,494** accepted mappings.
+- Processed training slice count: **1,942** unique players.
+- Global appearance coverage estimate: **≈94.7%** and rising (93.2% before
+  the March 11 automation).
+
+*Run `uv run scripts/compute_metrics.py` to refresh these numbers at any time.*
+
+Last updated: 2026-03-11

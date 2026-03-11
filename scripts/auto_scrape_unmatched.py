@@ -43,8 +43,10 @@ except ImportError:
     print("Please install selenium and webdriver-manager (uv add selenium webdriver-manager)")
     sys.exit(1)
 
-# load FIFA cache for offline lookup
+# load FIFA caches for offline lookup
 FIFA_CACHE_P = Path('data') / 'cache' / 'fifa_players.parquet'
+FIFA1000_P   = Path('data') / 'cache' / 'fifa_players_1000.parquet'
+
 if FIFA_CACHE_P.exists():
     _fifa_df = pd.read_parquet(FIFA_CACHE_P)
     # primary name field is `long_name` (full name); also keep short for display
@@ -52,6 +54,14 @@ if FIFA_CACHE_P.exists():
 else:
     _fifa_df = None
     _candidate_names = []
+
+# smaller sample with fifa ids
+if FIFA1000_P.exists():
+    _fifa1000 = pd.read_parquet(FIFA1000_P)
+    _candidate1000 = _fifa1000['long_name'].astype(str).tolist()
+else:
+    _fifa1000 = None
+    _candidate1000 = []
 
 REVIEW_P = Path('data') / 'mappings' / 'player_map_review.csv'
 MAP_P = Path('data') / 'mappings' / 'player_map.csv'
@@ -102,29 +112,23 @@ def search_player(driver, name: str):
     ``None`` for an online lookup.  ``fifa_id`` may also be ``None`` if the
     lookup fails.
     """
-    # offline lookup
-    if _fifa_df is not None and _candidate_names:
-        # debug: show that offline dataset is available
-        print(f'offline candidates count {len(_candidate_names)} for query {name}')
+    # offline lookup only in the 1000-player sample (fast)
+    if _fifa1000 is not None and _candidate1000:
+        print(f'offline sample candidates {len(_candidate1000)} for query {name}')
         res = process.extractOne(
             name,
-            _candidate_names,
+            _candidate1000,
             scorer=fuzz.WRatio,
             score_cutoff=65,
             processor=lambda s: s
         )
-        # debug
-        print('offline lookup result', res)
+        print('offline sample result', res)
         if res is not None:
-            candidate, score, idx = res
-            if candidate:
-                if 'sofifa_id' in _fifa_df.columns:
-                    fifa_id = int(_fifa_df.iloc[idx]['sofifa_id'])
-                elif 'player_id' in _fifa_df.columns:
-                    fifa_id = int(_fifa_df.iloc[idx]['player_id'])
-                else:
-                    fifa_id = None
-                return fifa_id, candidate, score
+            cand2, score2, idx2 = res
+            if cand2:
+                fifa_id = int(_fifa1000.iloc[idx2]['sofifa_id_str'])
+                return fifa_id, cand2, score2
+    # otherwise fall back to web search
     # fallback to web search
     q = urllib.parse.quote(name)
     url = f"https://sofifa.com/players?search={q}"
